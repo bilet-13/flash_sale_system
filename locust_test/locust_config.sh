@@ -1,0 +1,3 @@
+# locust_config.sh
+TARGET_PRODUCT_ID=999
+INITIAL_STOCK=10000
