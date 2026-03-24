@@ -5,7 +5,7 @@ Database connection and session management
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from app.config import settings
+from app.setting import settings
 
 # 建立資料庫引擎
 # echo=True 會在 console 顯示所有 SQL 語句（開發時很有用）

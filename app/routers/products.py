@@ -10,7 +10,7 @@ import redis
 from app.database import get_db
 from app.models import Product
 from app.schemas import ProductResponse, ProductStockResponse
-from app.config import settings
+from app.setting import settings
 
 router = APIRouter(prefix="/products", tags=["Products"])
 

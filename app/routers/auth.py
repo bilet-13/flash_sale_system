@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models import User
 from app.schemas import UserRegister, UserResponse, Token
 from app.auth import get_password_hash, authenticate_user, create_access_token
-from app.config import settings
+from app.setting import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -26,7 +26,8 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     - **password**: 密碼（至少6字元）
     """
     # 檢查用戶名是否已存在
-    existing_user = db.query(User).filter(User.username == user_data.username).first()
+    existing_user = db.query(User).filter(
+        User.username == user_data.username).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -34,7 +35,8 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
         )
 
     # 檢查 Email 是否已存在
-    existing_email = db.query(User).filter(User.email == user_data.email).first()
+    existing_email = db.query(User).filter(
+        User.email == user_data.email).first()
     if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -80,7 +82,8 @@ def login(
         )
 
     # 建立 JWT Token
-    access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(
+        minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=access_token_expires

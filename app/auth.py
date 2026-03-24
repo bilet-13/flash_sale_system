@@ -10,7 +10,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.config import settings
+from app.setting import settings
 from app.database import get_db
 from app.models import User
 from app.schemas import TokenData
@@ -68,7 +68,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
 
@@ -87,7 +88,8 @@ def verify_token(token: str, credentials_exception: HTTPException) -> TokenData:
         HTTPException: Token 無效或過期
     """
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY,
+                             algorithms=[settings.JWT_ALGORITHM])
         username: str = payload.get("sub")
 
         if username is None:

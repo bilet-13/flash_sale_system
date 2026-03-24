@@ -12,7 +12,8 @@ from app.database import get_db
 from app.models import User, Product, Order
 from app.schemas import FlashSaleBuyRequest, FlashSaleBuyResponse
 from app.auth import get_current_user
-from app.config import settings
+from app.setting import settings
+from app.redis import get_redis
 
 router = APIRouter(prefix="/flash-sale", tags=["Flash Sale"])
 
@@ -33,12 +34,38 @@ end
 """
 
 
+def get_and_detuct_product_from_redis(redis_client: redis.Redis, product_id: int, request, product) -> int:
+    """
+    從 Redis 獲取商品庫存
+    """
+    try:
+
+        redis_key = f"stock:product:{product_id}"
+
+        # 確保 Redis 中有庫存資料（如果沒有，從資料庫同步）
+        if redis_client.get(redis_key) is None:
+            redis_client.set(redis_key, product.stock)
+
+        # Step 3: 使用 Lua Script 原子性扣減庫存
+        result = r.eval(LUA_DEDUCT_STOCK, 1, redis_key, request.quantity)
+
+        if result == -1:
+            # 庫存不足
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="庫存不足，搶購失敗"
+            )
+    except:
+        raise
+
+
 @router.post("/buy/{product_id}", response_model=FlashSaleBuyResponse)
 def buy_product(
     product_id: int,
     request: FlashSaleBuyRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis)
 ):
     """
     搶購商品（核心 API）
@@ -65,36 +92,25 @@ def buy_product(
         )
 
     # Step 2: 連接 Redis
-    try:
-        r = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD,
-            db=settings.REDIS_DB,
-            decode_responses=True
-        )
+    if settings.PURCHASE_MODE == "redis":
+        try:
+            get_and_detuct_product_from_redis(
+                redis_client, product_id, request, product)
 
-        redis_key = f"stock:product:{product_id}"
-
-        # 確保 Redis 中有庫存資料（如果沒有，從資料庫同步）
-        if r.get(redis_key) is None:
-            r.set(redis_key, product.stock)
-
-        # Step 3: 使用 Lua Script 原子性扣減庫存
-        result = r.eval(LUA_DEDUCT_STOCK, 1, redis_key, request.quantity)
-
-        if result == -1:
-            # 庫存不足
+        except redis.RedisError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Redis 連線失敗: {str(e)}"
+            )
+    else:
+        # 傳統資料庫扣減庫存（不推薦，可能導致超賣）
+        if product.stock < request.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="庫存不足，搶購失敗"
+                detail="not enough stock, purchase failed"
             )
-
-    except redis.RedisError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Redis 連線失敗: {str(e)}"
-        )
+        product.stock -= request.quantity
+        db.commit()
 
     # Step 4: 建立訂單（先在資料庫建立，狀態為 pending）
     total_price = product.price * request.quantity
@@ -128,7 +144,8 @@ def buy_product(
         channel = connection.channel()
 
         # 宣告 Queue（如果不存在就建立）
-        channel.queue_declare(queue=settings.RABBITMQ_QUEUE_FLASH_SALE, durable=True)
+        channel.queue_declare(
+            queue=settings.RABBITMQ_QUEUE_FLASH_SALE, durable=True)
 
         # 訂單訊息
         message = {
@@ -157,7 +174,8 @@ def buy_product(
         db.commit()
 
         # 回滾 Redis 庫存
-        r.incrby(redis_key, request.quantity)
+        redis_key = f"stock:product:{product_id}"
+        redis_client.incrby(redis_key, request.quantity)
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

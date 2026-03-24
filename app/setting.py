@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     REDIS_PORT: int = Field(default=6379)
     REDIS_PASSWORD: str = Field(default="redis_password")
     REDIS_DB: int = Field(default=0)
+    REDIS_TEST_DB: int = Field(default=1)  # 測試專用 Redis DB
 
     # RabbitMQ Configuration
     RABBITMQ_HOST: str = Field(default="localhost")
@@ -33,7 +34,8 @@ class Settings(BaseSettings):
     RABBITMQ_QUEUE_FLASH_SALE: str = Field(default="flash_sale_orders")
 
     # JWT Configuration
-    JWT_SECRET_KEY: str = Field(default="your-secret-key-change-this-in-production")
+    JWT_SECRET_KEY: str = Field(
+        default="your-secret-key-change-this-in-production")
     JWT_ALGORITHM: str = Field(default="HS256")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60)
 
@@ -41,6 +43,7 @@ class Settings(BaseSettings):
     APP_TITLE: str = Field(default="Flash Sale API")
     APP_VERSION: str = Field(default="1.0.0")
     DEBUG: bool = Field(default=True)
+    PURCHASE_MODE: str = Field(default="redis")
 
     @property
     def database_url(self) -> str:

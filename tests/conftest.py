@@ -10,8 +10,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.database import Base, get_db
-from app.config import settings
-
+from app.setting import settings
+from app.redis import get_redis
 # 測試用的 DB URL：跟 production 同一台 PostgreSQL，但用不同的 DB
 TEST_DATABASE_URL = (
     f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
@@ -20,7 +20,8 @@ TEST_DATABASE_URL = (
 
 # 建立測試用的 engine 和 SessionLocal
 test_engine = create_engine(TEST_DATABASE_URL)
-TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+TestSessionLocal = sessionmaker(
+    autocommit=False, autoflush=False, bind=test_engine)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -35,7 +36,7 @@ def setup_database():
 
 
 @pytest.fixture(scope="function", autouse=True)
-def clean_tables():
+def clean_tables_and_redis(redis_client):
     """
     每個測試結束後清空所有 table 的資料，並清除 Redis 庫存 keys
     保證每個測試都從乾淨的狀態開始
@@ -51,14 +52,8 @@ def clean_tables():
         db.close()
 
     # 清 Redis 的所有庫存 keys
-    r = redis.Redis(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        password=settings.REDIS_PASSWORD,
-        db=settings.REDIS_DB
-    )
-    for key in r.scan_iter("stock:*"):
-        r.delete(key)
+    for key in redis_client.scan_iter("stock:*"):
+        redis_client.delete(key)
 
 
 @pytest.fixture
@@ -74,7 +69,25 @@ def db():
 
 
 @pytest.fixture
-def client(db):
+def redis_client():
+    """
+    提供測試用的 Redis 連線
+    """
+    r = redis.Redis(
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        password=settings.REDIS_PASSWORD,
+        db=settings.REDIS_TEST_DB,
+        decode_responses=True
+    )
+    try:
+        yield r
+    finally:
+        r.close()
+
+
+@pytest.fixture
+def client(db, redis_client):
     """
     提供測試用的 HTTP client
     自動把 get_db 替換成測試用的 DB session
@@ -85,7 +98,14 @@ def client(db):
         finally:
             pass
 
+    def override_get_redis():
+        try:
+            yield redis_client
+        finally:
+            pass
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_redis] = override_get_redis
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
