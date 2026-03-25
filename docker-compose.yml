@@ -56,6 +56,45 @@ services:
     networks:
       - flash_sale_network
 
+  flash_sale_api:
+    build: .
+    container_name: flash_sale_api
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
+    command:
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 
+    networks:
+      - flash_sale_network
+  flash_sale_worker:
+    build: .
+    container_name: flash_sale_worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_HOST: rabbitmq
+    command:
+      python3 worker.py
+    networks:
+      - flash_sale_network
+
 volumes:
   postgres_data:
     driver: local

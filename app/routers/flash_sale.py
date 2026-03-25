@@ -47,7 +47,8 @@ def get_and_detuct_product_from_redis(redis_client: redis.Redis, product_id: int
             redis_client.set(redis_key, product.stock)
 
         # Step 3: 使用 Lua Script 原子性扣減庫存
-        result = r.eval(LUA_DEDUCT_STOCK, 1, redis_key, request.quantity)
+        result = redis_client.eval(
+            LUA_DEDUCT_STOCK, 1, redis_key, request.quantity)
 
         if result == -1:
             # 庫存不足

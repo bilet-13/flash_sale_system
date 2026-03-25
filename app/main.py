@@ -8,7 +8,7 @@ import redis
 import pika
 from sqlalchemy import text
 
-from app.config import settings
+from app.setting import settings
 from app.database import engine, get_db
 from app.routers import auth, products, orders, flash_sale
 

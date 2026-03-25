@@ -12,7 +12,8 @@ from decimal import Decimal
 
 class UserRegister(BaseModel):
     """註冊請求 Schema"""
-    username: str = Field(..., min_length=3, max_length=50, description="用戶名（3-50字元）")
+    username: str = Field(..., min_length=3, max_length=50,
+                          description="用戶名（3-50字元）")
     email: EmailStr = Field(..., description="Email 地址")
     password: str = Field(..., min_length=6, description="密碼（至少6字元）")
 
