@@ -55,6 +55,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Create test database
+        run: psql -h localhost -U flash_user -d flash_sale_db -c "CREATE DATABASE test_flash_sale;"
+        env:
+          PGPASSWORD: flash_password
+
       - name: Run tests
         env:
           POSTGRES_USER: flash_user
