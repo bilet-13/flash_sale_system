@@ -69,7 +69,7 @@ jobs:
           POSTGRES_PORT: 5432
           REDIS_HOST: localhost
           REDIS_PORT: 6379
-          REDIS_PASSWORD: redis_password
+          REDIS_PASSWORD: ""
           RABBITMQ_HOST: localhost
           RABBITMQ_PORT: 5672
           RABBITMQ_USER: rabbit_user
