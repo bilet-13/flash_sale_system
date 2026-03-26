@@ -56,11 +56,21 @@ services:
     networks:
       - flash_sale_network
 
+  nginx:
+    image: nginx:alpine
+    container_name: flash_sale_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - flash_sale_api
+    networks:
+      - flash_sale_network
+
   flash_sale_api:
     build: .
     container_name: flash_sale_api
-    ports:
-      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
