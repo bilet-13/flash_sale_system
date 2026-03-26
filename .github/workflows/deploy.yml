@@ -6,7 +6,75 @@ on:
       - main
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: flash_user
+          POSTGRES_PASSWORD: flash_password
+          POSTGRES_DB: flash_sale_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3
+        env:
+          RABBITMQ_DEFAULT_USER: rabbit_user
+          RABBITMQ_DEFAULT_PASS: rabbit_password
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          POSTGRES_USER: flash_user
+          POSTGRES_PASSWORD: flash_password
+          POSTGRES_DB: flash_sale_db
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: redis_password
+          RABBITMQ_HOST: localhost
+          RABBITMQ_PORT: 5672
+          RABBITMQ_USER: rabbit_user
+          RABBITMQ_PASSWORD: rabbit_password
+          JWT_SECRET_KEY: test-secret-key
+          PURCHASE_MODE: redis
+        run: pytest tests/ -v
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to EC2

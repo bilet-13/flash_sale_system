@@ -64,3 +64,6 @@ Thumbs.db
 # FastAPI / uvicorn
 *.db
 *.sqlite3
+
+# ssh keys
+*.pem
