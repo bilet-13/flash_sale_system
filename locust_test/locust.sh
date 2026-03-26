@@ -16,5 +16,12 @@ docker exec -it flash_sale_postgres psql -U $POSTGRES_USER -d $POSTGRES_DB \
 docker exec -it flash_sale_redis redis-cli -a $REDIS_PASSWORD \
   SET stock:product:$TARGET_PRODUCT_ID $INITIAL_STOCK
 
+# for i in $(seq 1 300); do
+#   curl -s -X POST http://localhost:8000/auth/register \
+#     -H "Content-Type: application/json" \
+#     -d "{\"username\":\"testuser_$i\",\"email\":\"testuser_$i@example.com\",\"password\":\"password123\"}" > /dev/null
+# done
+# echo "done"
+
 export TARGET_PRODUCT_ID
-cd "$(dirname "$0")/.." && .venv/bin/locust -f locust/locustfile.py --host=http://localhost:8000
+cd "$(dirname "$0")/.." && .venv/bin/locust -f $(dirname "$0")/locustfile.py --host=http://localhost:8000

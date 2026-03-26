@@ -6,13 +6,16 @@ Use locust.sh instead, which will set the target product id and initial stock be
 """
 
 from locust import HttpUser, task, between
-import uuid
 import os
+import random
 
 TARGET_PRODUCT_ID = int(os.environ.get("TARGET_PRODUCT_ID", 1))
 
 # 壓測目標商品（確保這個商品在 DB 存在，且 Redis 庫存夠大）
 TARGET_PRODUCT_ID = 999
+
+# 預建用戶數量（對應 setup 腳本建立的數量）
+PRE_CREATED_USERS = 300
 
 
 class RealisticUser(HttpUser):
@@ -25,26 +28,15 @@ class RealisticUser(HttpUser):
     def on_start(self):
         """
         每個虛擬用戶「誕生」時執行一次。
-        用 uuid 確保每個用戶的 username 不重複。
+        從預建用戶中隨機挑一個登入，避免 register 在壓測中佔用 DB。
         """
-        unique_id = uuid.uuid4().hex[:8]
-        self.username = f"locust_{unique_id}"
+        user_id = random.randint(1, PRE_CREATED_USERS)
+        self.username = f"testuser_{user_id}"
         self.password = "password123"
         self.auth_headers = {}
         self.last_order_id = None
 
-        # Step 1: 註冊
-        self.client.post(
-            "/auth/register",
-            json={
-                "username": self.username,
-                "email": f"{self.username}@example.com",
-                "password": self.password
-            },
-            name="/auth/register"
-        )
-
-        # Step 2: 登入，取得 JWT Token
+        # 直接登入，不做 register
         resp = self.client.post(
             "/auth/login",
             data={
