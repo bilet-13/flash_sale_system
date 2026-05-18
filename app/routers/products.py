@@ -10,7 +10,7 @@ import redis
 from app.database import get_db
 from app.models import Product
 from app.schemas import ProductResponse, ProductStockResponse
-from app.setting import settings
+from app.redis import get_redis
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -50,7 +50,11 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{product_id}/stock", response_model=ProductStockResponse)
-def get_product_stock(product_id: int, db: Session = Depends(get_db)):
+def get_product_stock(
+    product_id: int,
+    db: Session = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis)
+):
     """
     取得商品即時庫存（優先從 Redis 讀取）
 
@@ -72,16 +76,8 @@ def get_product_stock(product_id: int, db: Session = Depends(get_db)):
 
     # 嘗試從 Redis 讀取即時庫存
     try:
-        r = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD,
-            db=settings.REDIS_DB,
-            decode_responses=True
-        )
-
         redis_key = f"stock:product:{product_id}"
-        stock = r.get(redis_key)
+        stock = redis_client.get(redis_key)
 
         if stock is not None:
             return ProductStockResponse(

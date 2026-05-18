@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 import redis
 import pika
 import json
+import time
 
 from app.database import get_db
 from app.models import User, Product, Order
@@ -127,6 +128,18 @@ def buy_product(
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
+
+    # Step 5: sync mode — 模擬耗時操作（發 email、金流等），不使用 RabbitMQ
+    if settings.PURCHASE_MODE == "sync":
+        time.sleep(0.2)  # 模擬 200ms 的同步耗時操作
+        new_order.status = "completed"
+        db.commit()
+        return FlashSaleBuyResponse(
+            success=True,
+            message="搶購成功",
+            order_id=new_order.id,
+            status="completed"
+        )
 
     # Step 5: 發送訂單到 RabbitMQ 異步處理
     try:

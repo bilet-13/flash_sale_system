@@ -13,8 +13,8 @@ engine = create_engine(
     settings.database_url,
     echo=settings.DEBUG,
     pool_pre_ping=True,  # 連線前先測試是否有效
-    pool_size=10,        # 連線池大小
-    max_overflow=20      # 超過 pool_size 後最多再建立幾個連線
+    pool_size=50,        # 連線池大小
+    max_overflow=50      # 超過 pool_size 後最多再建立幾個連線
 )
 
 # 建立 Session 工廠
